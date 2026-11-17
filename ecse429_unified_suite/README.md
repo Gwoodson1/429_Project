@@ -1,9 +1,9 @@
 # ECSE 429 unified API test suite
 
 Tests for Todos, Categories, and Projects using Python, pytest, requests, and
-pytest-bdd. The Part B story suite contains five Todo stories and five Category
-stories. Each story has normal, alternate, and error-flow scenario outlines in
-its own Gherkin feature file.
+pytest-bdd. The Part B story suite contains five Todo stories, five Category
+stories, and five Project stories. Each story has normal, alternate, and
+error-flow scenario outlines in its own Gherkin feature file.
 
 ## Running
 Start the Todo Manager REST API on http://localhost:4567 in a separate terminal.
@@ -12,13 +12,13 @@ From this folder in PowerShell:
 ```
 py -m pip install -r requirements.txt
 py -m pip install pytest-randomly
-py -m pytest -v test_todos.py test_categories.py test_projects.py test_todo_stories.py test_category_stories.py
-py -m pytest -v --randomly-seed=12345 test_todos.py test_categories.py test_projects.py test_todo_stories.py test_category_stories.py
-py -m pytest -v -ra test_todos.py test_categories.py test_projects.py test_todo_stories.py test_category_stories.py 2>&1 | Tee-Object -FilePath pytest-results.txt
+py -m pytest -v test_todos.py test_categories.py test_projects.py test_todo_stories.py test_category_stories.py test_project_stories.py
+py -m pytest -v --randomly-seed=12345 test_todos.py test_categories.py test_projects.py test_todo_stories.py test_category_stories.py test_project_stories.py
+py -m pytest -v -ra test_todos.py test_categories.py test_projects.py test_todo_stories.py test_category_stories.py test_project_stories.py 2>&1 | Tee-Object -FilePath pytest-results.txt
 ```
 
-Expected collection: 172 tests (41 existing Todos, 40 existing Categories,
-31 Projects, and 60 Part B story examples). Each feature file is a story and
+Expected collection: 202 tests (41 existing Todos, 40 existing Categories,
+31 Projects, and 90 Part B story examples). Each feature file is a story and
 contains one scenario outline for each required flow. The examples create
 distinct pytest cases with unique API records.
 

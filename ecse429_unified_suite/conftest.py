@@ -80,7 +80,7 @@ def bdd_state():
 
 
 def _collection(entity):
-    collections = {'todo': 'todos', 'category': 'categories'}
+    collections = {'todo': 'todos', 'category': 'categories', 'project': 'projects'}
     assert entity in collections, f'Unsupported story entity: {entity}'
     return collections[entity]
 
@@ -94,6 +94,7 @@ def _track_created_response(state, entity, response):
                 'todos': 'todos',
                 'category': 'categories',
                 'categories': 'categories',
+                'project': 'projects',
                 'projects': 'projects',
             }
             assert entity in collections, f'Unsupported resource type: {entity}'
@@ -200,6 +201,17 @@ def create_story_entity_without_title(api, resource_state, bdd_state, entity, de
     bdd_state['response'] = response
 
 
+@when(parsers.parse('I create a project with malformed JSON "{malformed}"'))
+def create_project_with_malformed_json(api, bdd_state, malformed):
+    bdd_state['response'] = call(
+        api,
+        'POST',
+        '/projects',
+        data=malformed,
+        headers={'Content-Type': 'application/json'},
+    )
+
+
 @when(parsers.parse('I retrieve the {entity:w} titled "{title}" as JSON'))
 def retrieve_story_entity_as_json(api, bdd_state, entity, title):
     _assert_story_title(bdd_state, entity, title)
@@ -253,6 +265,16 @@ def put_story_entity_without_title(api, bdd_state, entity, title):
     item = bdd_state[f'{entity}_item']
     bdd_state['response'] = call(
         api, 'PUT', f"/{_collection(entity)}/{item['id']}", json={'description': 'Should not apply'}
+    )
+
+
+@when(parsers.parse('I try to replace missing project ID "{item_id}"'))
+def put_missing_project(api, bdd_state, item_id):
+    bdd_state['response'] = call(
+        api,
+        'PUT',
+        f'/projects/{item_id}',
+        json={'title': 'Missing project', 'description': 'Should not apply'},
     )
 
 
@@ -421,3 +443,74 @@ def todo_and_category_should_still_exist(api, bdd_state):
         item = bdd_state[f'{entity}_item']
         response = call(api, 'GET', f"/{_collection(entity)}/{item['id']}")
         assert response.status_code == 200, (response.status_code, response.text)
+
+
+@given(parsers.parse('a project titled "{project_title}" and todo titled "{todo_title}" exist'))
+def project_and_todo_exist(resources, bdd_state, project_title, todo_title):
+    _create_story_entity(resources, bdd_state, 'project', project_title, description='Initial description')
+    _create_story_entity(resources, bdd_state, 'todo', todo_title, description='Initial description')
+
+
+@given(parsers.parse('a project titled "{project_title}" already contains todo "{todo_title}"'))
+def project_contains_todo(api, resources, bdd_state, project_title, todo_title):
+    project_and_todo_exist(resources, bdd_state, project_title, todo_title)
+    project = bdd_state['project_item']
+    todo = bdd_state['todo_item']
+    response = call(api, 'POST', f"/projects/{project['id']}/tasks", json={'id': str(todo['id'])})
+    assert response.status_code == 201, response.text
+
+
+@when('I add the todo to the project')
+def add_todo_to_project(api, bdd_state):
+    project = bdd_state['project_item']
+    todo = bdd_state['todo_item']
+    bdd_state['response'] = call(
+        api, 'POST', f"/projects/{project['id']}/tasks", json={'id': str(todo['id'])}
+    )
+
+
+@when('I add a missing todo to the project')
+def add_missing_todo_to_project(api, bdd_state):
+    project = bdd_state['project_item']
+    bdd_state['response'] = call(
+        api, 'POST', f"/projects/{project['id']}/tasks", json={'id': '999999999'}
+    )
+
+
+@when('I remove the todo from the project')
+def remove_todo_from_project(api, bdd_state):
+    project = bdd_state['project_item']
+    todo = bdd_state['todo_item']
+    bdd_state['response'] = call(
+        api, 'DELETE', f"/projects/{project['id']}/tasks/{todo['id']}"
+    )
+
+
+def _project_relation_items(api, bdd_state, relation):
+    project = bdd_state['project_item']
+    collection = 'todos' if relation == 'tasks' else 'categories'
+    return json_items(call(api, 'GET', f"/projects/{project['id']}/{relation}"), collection)
+
+
+@then('the project should list the todo')
+def project_should_list_todo(api, bdd_state):
+    todo = bdd_state['todo_item']
+    items = _project_relation_items(api, bdd_state, 'tasks')
+    assert any(str(item['id']) == str(todo['id']) for item in items), items
+
+
+@then('the project should not list the todo')
+def project_should_not_list_todo(api, bdd_state):
+    todo = bdd_state['todo_item']
+    items = _project_relation_items(api, bdd_state, 'tasks')
+    assert not any(str(item['id']) == str(todo['id']) for item in items), items
+
+
+@then('the project and todo should still exist')
+def project_and_todo_should_still_exist(api, bdd_state):
+    for entity in ('project', 'todo'):
+        item = bdd_state[f'{entity}_item']
+        response = call(api, 'GET', f"/{_collection(entity)}/{item['id']}")
+        assert response.status_code == 200, (response.status_code, response.text)
+
+

@@ -1,2 +1,3 @@
 pytest>=8,<10
+pytest-bdd>=7,<9
 requests>=2.31,<3
